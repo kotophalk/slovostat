@@ -1,5 +1,10 @@
 # SlovoStat
 
+![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
+[![тесты](https://github.com/kotophalk/slovostat/actions/workflows/tests.yml/badge.svg)](https://github.com/kotophalk/slovostat/actions/workflows/tests.yml)
+
 Подсчёт слов и символов на веб-странице по URL. Вводишь адрес — получаешь
 количество слов, символов с пробелами и без. Считается только видимый текст:
 скрипты, стили и мета-теги в статистику не попадают.
