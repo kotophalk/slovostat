@@ -17,7 +17,7 @@ button:disabled { opacity: 0.6; cursor: wait; }
 #result.show { display: block; }
 #result .num { font-size: 24px; font-weight: bold; }
 #result .label { color: #555; font-size: 14px; }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; text-align: center; }
 .error { color: #d32f2f; padding: 12px; background: #fdecea; border-radius: 6px; display: none; }
 .error.show { display: block; }
 </style>
@@ -32,9 +32,9 @@ button:disabled { opacity: 0.6; cursor: wait; }
 <div class="error" id="error"></div>
 <div id="result">
   <div class="stats">
-    <div><div class="num" id="words">0</div><div class="label">слов</div></div>
-    <div><div class="num" id="chars">0</div><div class="label">символов</div></div>
-    <div><div class="num" id="chars_no_spaces">0</div><div class="label">без пробелов</div></div>
+    {% for m in metrics %}
+    <div><div class="num" data-metric="{{ m.key }}">0</div><div class="label">{{ m.label }}</div></div>
+    {% endfor %}
   </div>
 </div>
 <script>
@@ -57,11 +57,11 @@ document.getElementById('form').addEventListener('submit', async (e) => {
       err.textContent = data.error;
       err.className = 'error show';
     } else {
-      document.getElementById('words').textContent = data.words.toLocaleString('ru');
-      document.getElementById('chars').textContent = data.chars.toLocaleString('ru');
-      document.getElementById('chars_no_spaces').textContent = data.chars_no_spaces.toLocaleString('ru');
+      for (const el of document.querySelectorAll('[data-metric]')) {
+        const value = data[el.dataset.metric];
+        el.textContent = typeof value === 'number' ? value.toLocaleString('ru') : '—';
+      }
       res.className = 'show';
-      res.id = 'result';
     }
   } catch { err.textContent = 'Ошибка соединения'; err.className = 'error show'; }
   btn.disabled = false;
