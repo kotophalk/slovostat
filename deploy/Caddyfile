@@ -1,10 +1,9 @@
 # Боевой конфиг для slovostat.ru.
 #
-#   # каталог логов должен принадлежать пользователю caddy, иначе reload
-#   # упадёт с "permission denied" уже после успешной валидации
-#   sudo mkdir -p /var/log/caddy && sudo chown caddy:caddy /var/log/caddy && sudo chmod 750 /var/log/caddy
 #   sudo cp /opt/slovostat/deploy/Caddyfile /etc/caddy/Caddyfile
-#   sudo caddy validate --config /etc/caddy/Caddyfile
+#   # именно от caddy: под sudo валидация создаёт файлы логов от root,
+#   # и потом сервис не может их открыть (permission denied при reload)
+#   sudo -u caddy caddy validate --config /etc/caddy/Caddyfile
 #   sudo systemctl reload caddy
 #
 # Сертификаты Caddy получает и продлевает сам — но только после того, как
