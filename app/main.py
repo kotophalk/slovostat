@@ -10,7 +10,7 @@ from app.clientip import get_client_ip
 from app.config import RATE_LIMIT_PER_DAY
 from app.counter import count_text, metric_labels
 from app.fetcher import fetch_visible_text, FetchError
-from app.limiter import check_limit, close_db, init_db, record_request
+from app.limiter import check_limit, close_db, init_db, ping_db, record_request
 
 
 @asynccontextmanager
@@ -32,6 +32,17 @@ class AnalyzeRequest(BaseModel):
 @app.api_route("/", response_class=HTMLResponse, methods=["GET", "HEAD"])
 async def index(request: Request):
     return templates.TemplateResponse(request, "index.html", {"metrics": metric_labels()})
+
+
+# Для мониторинга: без шаблона и без сети, но с проверкой базы — если она
+# недоступна, /analyze тоже работать не будет.
+@app.api_route("/health", methods=["GET", "HEAD"])
+async def health():
+    try:
+        await ping_db()
+    except Exception:
+        return JSONResponse({"status": "error"}, status_code=503)
+    return {"status": "ok"}
 
 
 @app.post("/analyze")

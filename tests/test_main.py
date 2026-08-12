@@ -31,6 +31,25 @@ def test_index_supports_head():
     assert resp.text == ""
 
 
+def test_health_ok():
+    with patch("app.main.ping_db", new_callable=AsyncMock):
+        resp = client.get("/health")
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "ok"}
+
+
+def test_health_supports_head():
+    with patch("app.main.ping_db", new_callable=AsyncMock):
+        assert client.head("/health").status_code == 200
+
+
+def test_health_reports_broken_db():
+    with patch("app.main.ping_db", new_callable=AsyncMock, side_effect=OSError("disk I/O error")):
+        resp = client.get("/health")
+        assert resp.status_code == 503
+        assert resp.json() == {"status": "error"}
+
+
 def test_index_renders_all_metrics():
     from app.counter import METRICS
 

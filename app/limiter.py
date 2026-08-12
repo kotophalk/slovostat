@@ -45,6 +45,12 @@ async def _connection() -> aiosqlite.Connection:
     return _db if _db is not None else await init_db()
 
 
+async def ping_db() -> None:
+    """Проверяет, что база отвечает. Бросает исключение, если нет."""
+    db = await _connection()
+    await db.execute("SELECT 1")
+
+
 async def check_limit(ip: str) -> bool:
     """Возвращает True если лимит НЕ превышен."""
     db = await _connection()
