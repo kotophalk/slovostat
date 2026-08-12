@@ -1,0 +1,39 @@
+# /etc/caddy/Caddyfile — общий на все инструменты сервера.
+# Caddy сам получает и продлевает сертификаты Let's Encrypt.
+# После правок: sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy
+
+{
+	email admin@example.com  # адрес для Let's Encrypt
+}
+
+(common) {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+	log {
+		output file /var/log/caddy/{args[0]}.log {
+			roll_size 10MiB
+			roll_keep 3
+		}
+	}
+}
+
+slovostat.example.com {
+	import common slovostat
+	reverse_proxy 127.0.0.1:8000
+}
+
+# Следующие инструменты — тот же шаблон, свой порт:
+#
+# domains.example.com {
+# 	import common domains
+# 	reverse_proxy 127.0.0.1:8001
+# }
+#
+# dr.example.com {
+# 	import common dr
+# 	reverse_proxy 127.0.0.1:8002
+# }

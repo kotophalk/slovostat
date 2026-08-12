@@ -3,5 +3,10 @@ __pycache__
 .venv
 *.db
 .git
+.github
 .pytest_cache
 tests
+docs
+deploy
+data
+.env

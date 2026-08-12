@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    image: slovostat
+    restart: unless-stopped
+    # Наружу приложение не смотрит: его выставляет reverse proxy на хосте.
+    ports:
+      - "127.0.0.1:${SLOVOSTAT_PORT:-8000}:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      SLOVOSTAT_DB_PATH: /app/data/slovostat.db
+      SLOVOSTAT_RATE_LIMIT: ${SLOVOSTAT_RATE_LIMIT:-25}
+      SLOVOSTAT_MAX_PAGE_MB: ${SLOVOSTAT_MAX_PAGE_MB:-5}
+    # Разбор страницы на лимите (5 МБ) добавляет ~80 МБ к 50 МБ базы.
+    # Лимит держит один инструмент в своих рамках, чтобы он не уронил соседей.
+    mem_limit: 320m
+    cpus: 0.75
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

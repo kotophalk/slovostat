@@ -1,84 +1,205 @@
-# Деплой SlovoStat на VPS
+# Деплой на VPS
 
-## Архитектура
+Инструкция под сервер вида 1 vCPU / 2 ГБ RAM / 25 ГБ NVMe (Selectel, Ubuntu
+22.04 или 24.04) и под то, что на этом же сервере будут жить соседние
+инструменты.
 
-```
-Интернет → Caddy/Nginx (80/443, SSL) → Docker (127.0.0.1:8000)
-```
-
----
-
-## 1. docker-compose.yml
-
-Создать в корне проекта:
-
-```yaml
-services:
-  app:
-    build: .
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:8000:8000"
-    volumes:
-      - ./data:/app/data
-    environment:
-      - SLOVOSTAT_DB_PATH=/app/data/slovostat.db
-```
-
-Приложение слушает только на localhost:8000 — наружу его выставляет reverse proxy.
-
-**Про IP клиента.** Rate limiting считает запросы по IP из `X-Forwarded-For`, и
-заголовок принимается только от адресов из `SLOVOSTAT_TRUSTED_PROXIES`. По
-умолчанию туда входят localhost и приватные сети — этого хватает и когда прокси
-стоит на хосте (контейнер видит его как адрес docker-шлюза, например
-`172.17.0.1`), и когда прокси в соседнем контейнере. Если приложение выставлено
-наружу без прокси — задай `SLOVOSTAT_TRUSTED_PROXIES=` (пустое значение), тогда
-заголовок будет игнорироваться полностью.
-
-Оба конфига ниже уже передают `X-Forwarded-For`: Caddy добавляет его сам,
-у Nginx это `proxy_set_header X-Forwarded-For`. Подробнее — в
-[настройках](configuration.md#ip-клиента-за-reverse-proxy).
-
----
-
-## 2. Вариант A: Caddy (рекомендуется)
-
-Caddy сам получает и обновляет Let's Encrypt сертификат. Ноль конфигурации для SSL.
-
-`/etc/caddy/Caddyfile` на VPS:
+## Схема
 
 ```
-slovostat.example.com {
-    reverse_proxy 127.0.0.1:8000
-}
+Интернет → Caddy на хосте (80/443, SSL)
+             ├── slovostat.example.com → 127.0.0.1:8000 → контейнер slovostat
+             ├── domains.example.com   → 127.0.0.1:8001 → контейнер другого инструмента
+             └── dr.example.com        → 127.0.0.1:8002 → ...
 ```
 
-Замени `slovostat.example.com` на свой домен.
+Reverse proxy один на все сервисы, каждый инструмент — отдельный каталог в
+`/opt` со своим `docker-compose.yml` и своим портом на `127.0.0.1`. Наружу
+контейнеры не смотрят.
 
----
+## Сколько ресурсов нужно
 
-## 3. Вариант B: Nginx + Certbot
+Замеры SlovoStat (разбор страницы — самая тяжёлая операция):
 
-`/etc/nginx/sites-available/slovostat` на VPS:
+| | RAM | CPU |
+|---|---|---|
+| Простой (контейнер) | ~40 МБ | ~0 |
+| Страница 300 КБ (типичная) | +7 МБ | 0,1 с |
+| Страница 5 МБ (лимит) | +82 МБ | 1,5 с |
+
+То есть один инструмент — это ~60 МБ в покое и до ~150 МБ на пике. Плюс
+система и Docker (~250 МБ) и Caddy (~30 МБ). На 2 ГБ спокойно помещается
+5–6 таких сервисов; узкое место — не память, а единственное ядро: разбор
+крупной страницы занимает его целиком на секунду-полторы.
+
+Отсюда два правила: в compose у каждого сервиса стоит `mem_limit`, чтобы один
+инструмент не уронил соседей, и на сервере нужен swap — на 2 ГБ без него любой
+всплеск заканчивается OOM-killer'ом.
+
+Диска 25 ГБ хватает с запасом: образ ~240 МБ на инструмент, база рейт-лимита —
+десятки килобайт. Следить стоит только за тем, чтобы старые образы не копились
+(см. «Обслуживание»).
+
+## 1. Первая настройка сервера
+
+Под root сразу после создания машины.
+
+```bash
+# Пользователь вместо root
+adduser deploy && usermod -aG sudo deploy
+rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy
+
+# Вход только по ключу
+sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+systemctl reload ssh
+
+# Swap 2 ГБ — обязательный для 2 ГБ RAM
+fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+sysctl -w vm.swappiness=10 && echo 'vm.swappiness=10' >> /etc/sysctl.conf
+
+# Файрвол и автообновления безопасности
+ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw --force enable
+apt-get update && apt-get install -y unattended-upgrades && dpkg-reconfigure -plow unattended-upgrades
+```
+
+Перед `PasswordAuthentication no` убедись, что ключ работает: открой второе
+SSH-соединение под `deploy` и не закрывай первое, пока не проверишь.
+
+## 2. Docker
+
+```bash
+apt-get install -y ca-certificates curl
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+apt-get update
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+usermod -aG docker deploy
+```
+
+## 3. Приложение
+
+Дальше — под пользователем `deploy`.
+
+```bash
+sudo install -d -o deploy -g deploy /opt/slovostat
+git clone https://github.com/kotophalk/slovostat.git /opt/slovostat
+cd /opt/slovostat
+cp .env.example .env      # порт и лимиты — при необходимости поправить
+docker compose up -d --build
+```
+
+Проверка до всякого домена:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://example.com"}'
+# {"words":19,"chars":127,"chars_no_spaces":109}
+```
+
+База лежит в `/opt/slovostat/data/slovostat.db` (том смонтирован в контейнер),
+переменные окружения — в `.env`, полный список в [configuration.md](configuration.md).
+
+## 4. Caddy и домен
+
+```bash
+sudo apt-get install -y debian-keyring debian-archive-keyring apt-transport-https
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt-get update && sudo apt-get install -y caddy
+```
+
+Конфиг — из [`deploy/Caddyfile.example`](../deploy/Caddyfile.example): скопировать
+в `/etc/caddy/Caddyfile`, заменить `example.com` на свой домен и указать почту
+для Let's Encrypt.
+
+```bash
+sudo cp /opt/slovostat/deploy/Caddyfile.example /etc/caddy/Caddyfile
+sudo nano /etc/caddy/Caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+```
+
+DNS: A-запись `slovostat.example.com` → IP сервера. Если инструментов будет
+несколько, проще сразу завести wildcard `*.example.com` → тот же IP: новый
+сервис тогда добавляется одним блоком в Caddyfile без похода в DNS.
+Сертификат Caddy получит сам при первом обращении — но только после того, как
+DNS реально начнёт резолвиться.
+
+## 5. Проверка, что лимит считает по клиентам
+
+За прокси IP берётся из `X-Forwarded-For` (его добавляет Caddy), и принимается
+он только от доверенных адресов. Контейнер видит прокси как адрес
+docker-шлюза (`172.17.0.1`), он входит в список по умолчанию — руками ничего
+настраивать не нужно. Убедиться, что в базу пишутся реальные адреса, а не
+`127.0.0.1`:
+
+```bash
+sudo apt-get install -y sqlite3
+sqlite3 /opt/slovostat/data/slovostat.db 'SELECT ip, COUNT(*) FROM requests GROUP BY ip;'
+```
+
+Если там один-единственный внутренний адрес — значит, заголовок не доходит:
+проверь, что запросы идут через Caddy, а не напрямую на порт.
+
+## Обновление
+
+```bash
+cd /opt/slovostat && git pull && docker compose up -d --build && docker image prune -f
+```
+
+## Резервные копии
+
+В базе лежат только счётчики рейт-лимита — потеря означает лишь сброс суточных
+квот, так что бэкап не обязателен. Если всё же нужен:
+
+```bash
+sqlite3 /opt/slovostat/data/slovostat.db ".backup '/opt/backups/slovostat-$(date +%F).db'"
+```
+
+Простое копирование файла при включённом WAL небезопасно — только `.backup`.
+
+## Добавить следующий инструмент
+
+1. `git clone` в `/opt/<имя>`, свой `.env` с портом 8001, 8002, …
+2. В compose нового сервиса — тот же `mem_limit` и публикация на `127.0.0.1`.
+3. Блок в `/etc/caddy/Caddyfile` по образцу, `systemctl reload caddy`.
+
+## Обслуживание
+
+```bash
+docker compose logs -f --tail 100      # логи приложения
+docker stats --no-stream               # память и CPU по контейнерам
+free -h                                # не съеден ли swap
+sudo journalctl -u caddy -n 50         # проблемы с сертификатами
+docker system prune -af --volumes      # чистка старых образов (тома проекта не трогает)
+```
+
+Ротация логов приложения уже настроена в compose (3 файла по 10 МБ), логов
+Caddy — в примере конфига.
+
+## Если вместо Caddy нужен Nginx
+
+Тот же принцип, больше ручной работы: сертификаты через certbot, заголовки
+прописываются явно.
 
 ```nginx
 server {
     listen 80;
     server_name slovostat.example.com;
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-    location / {
-        return 301 https://$host$request_uri;
-    }
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 301 https://$host$request_uri; }
 }
 
 server {
     listen 443 ssl;
     server_name slovostat.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/slovostat.example.com/fullchain.pem;
+    ssl_certificate     /etc/letsencrypt/live/slovostat.example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/slovostat.example.com/privkey.pem;
 
     location / {
@@ -91,83 +212,14 @@ server {
 }
 ```
 
----
-
-## 4. Скрипт первоначальной настройки VPS (deploy.sh)
-
 ```bash
-#!/bin/bash
-set -e
-
-echo "=== Установка Docker ==="
-apt-get update
-apt-get install -y ca-certificates curl
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
-apt-get update
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
-echo "=== Вариант: Caddy ==="
-# Раскомментируй если выбрал Caddy:
-# apt-get install -y debian-keyring debian-archive-keyring apt-transport-https
-# curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-# curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
-# apt-get update
-# apt-get install -y caddy
-
-echo "=== Вариант: Nginx + Certbot ==="
-# Раскомментируй если выбрал Nginx:
-# apt-get install -y nginx certbot python3-certbot-nginx
-# ln -s /etc/nginx/sites-available/slovostat /etc/nginx/sites-enabled/
-# certbot --nginx -d slovostat.example.com
-
-echo "=== Запуск приложения ==="
-cd /opt/slovostat
-docker compose up -d --build
-
-echo "=== Готово ==="
+sudo apt-get install -y nginx certbot python3-certbot-nginx
+sudo ln -s /etc/nginx/sites-available/slovostat /etc/nginx/sites-enabled/
+sudo certbot --nginx -d slovostat.example.com
 ```
 
----
-
-## Порядок деплоя
-
-1. **Забрать проект на VPS:**
-   ```bash
-   git clone https://github.com/kotophalk/slovostat.git /opt/slovostat
-   ```
-   Обновление потом — `git pull && docker compose up -d --build`.
-
-2. **На VPS — запустить скрипт (от root):**
-   ```bash
-   ssh user@your-vps
-   cd /opt/slovostat
-   sudo bash deploy.sh
-   ```
-
-3. **DNS** — направить A-запись домена на IP VPS
-
-4. **Caddy** — после того как DNS заработает:
-   ```bash
-   sudo systemctl restart caddy
-   ```
-   Или **Nginx**:
-   ```bash
-   sudo certbot --nginx -d slovostat.example.com
-   sudo systemctl restart nginx
-   ```
-
----
-
-## Сравнение вариантов
-
-| Компонент | Caddy | Nginx |
-|-----------|-------|-------|
-| SSL | автоматически | certbot + cron |
-| Конфиг | 3 строки | ~25 строк |
-| Сложность | минимальная | средняя |
-
-Рекомендация: **Caddy** — три строки конфига, SSL из коробки, автопродление.
-
-Когда определишься с доменом — замени `slovostat.example.com` на свой.
+| | Caddy | Nginx |
+|---|---|---|
+| SSL | автоматически | certbot + таймер |
+| Конфиг на сервис | 3 строки | ~25 строк |
+| Новый инструмент | блок + reload | конфиг + certbot |
