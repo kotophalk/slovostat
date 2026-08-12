@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SlovoStat — подсчёт слов на странице</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; color: #222; }
+h1 { margin-bottom: 8px; }
+p.desc { color: #555; margin-bottom: 24px; }
+form { display: flex; gap: 8px; margin-bottom: 24px; }
+input { flex: 1; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+button { padding: 10px 20px; background: #1a73e8; color: #fff; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
+button:disabled { opacity: 0.6; cursor: wait; }
+#result { padding: 16px; background: #f5f5f5; border-radius: 6px; display: none; }
+#result.show { display: block; }
+#result .num { font-size: 24px; font-weight: bold; }
+#result .label { color: #555; font-size: 14px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center; }
+.error { color: #d32f2f; padding: 12px; background: #fdecea; border-radius: 6px; display: none; }
+.error.show { display: block; }
+</style>
+</head>
+<body>
+<h1>SlovoStat</h1>
+<p class="desc">Подсчёт слов и символов на веб-странице</p>
+<form id="form">
+  <input type="url" id="url" placeholder="https://example.com" required>
+  <button type="submit" id="btn">Посчитать</button>
+</form>
+<div class="error" id="error"></div>
+<div id="result">
+  <div class="stats">
+    <div><div class="num" id="words">0</div><div class="label">слов</div></div>
+    <div><div class="num" id="chars">0</div><div class="label">символов</div></div>
+    <div><div class="num" id="chars_no_spaces">0</div><div class="label">без пробелов</div></div>
+  </div>
+</div>
+<script>
+document.getElementById('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn');
+  const err = document.getElementById('error');
+  const res = document.getElementById('result');
+  btn.disabled = true;
+  err.className = 'error';
+  res.className = '';
+  try {
+    const r = await fetch('/analyze', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url: document.getElementById('url').value})
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      err.textContent = data.error;
+      err.className = 'error show';
+    } else {
+      document.getElementById('words').textContent = data.words.toLocaleString('ru');
+      document.getElementById('chars').textContent = data.chars.toLocaleString('ru');
+      document.getElementById('chars_no_spaces').textContent = data.chars_no_spaces.toLocaleString('ru');
+      res.className = 'show';
+      res.id = 'result';
+    }
+  } catch { err.textContent = 'Ошибка соединения'; err.className = 'error show'; }
+  btn.disabled = false;
+});
+</script>
+</body>
+</html>
