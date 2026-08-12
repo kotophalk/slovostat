@@ -56,7 +56,8 @@ fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /
 echo '/swapfile none swap sw 0 0' >> /etc/fstab
 sysctl -w vm.swappiness=10 && echo 'vm.swappiness=10' >> /etc/sysctl.conf
 
-# Файрвол
+# Файрвол (в образах Selectel ufw не предустановлен)
+apt-get install -y ufw
 ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp && ufw --force enable
 
 # Автообновления безопасности (без интерактивного диалога)
