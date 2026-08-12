@@ -134,10 +134,18 @@ sudo apt-get update && sudo apt-get install -y caddy
 (шаблон под другой домен — в [`deploy/Caddyfile.example`](../deploy/Caddyfile.example)):
 
 ```bash
+# Каталог логов после установки принадлежит root, а Caddy работает от caddy.
+# Без этого шага конфиг пройдёт валидацию, но reload упадёт с permission denied.
+sudo mkdir -p /var/log/caddy && sudo chown caddy:caddy /var/log/caddy && sudo chmod 750 /var/log/caddy
+
 sudo cp /opt/slovostat/deploy/Caddyfile /etc/caddy/Caddyfile
 sudo caddy validate --config /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
+
+`reload` не поднимает сервис, а просит работающий процесс перечитать конфиг:
+если он упал, ошибку покажет `systemctl status caddy` — старая конфигурация при
+этом продолжает работать.
 
 DNS: A-запись `slovostat.ru` → IP сервера, такая же для `www`. Если
 инструментов будет несколько, проще сразу завести wildcard `*.slovostat.ru` →

@@ -1,6 +1,10 @@
 # /etc/caddy/Caddyfile — общий на все инструменты сервера.
 # Caddy сам получает и продлевает сертификаты Let's Encrypt.
 # После правок: sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy
+#
+# Перед первым запуском каталог логов должен принадлежать пользователю caddy:
+#   sudo mkdir -p /var/log/caddy && sudo chown caddy:caddy /var/log/caddy && sudo chmod 750 /var/log/caddy
+# Иначе конфиг пройдёт валидацию, но reload упадёт с "permission denied".
 
 {
 	email admin@example.com  # адрес для Let's Encrypt
