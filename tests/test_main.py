@@ -22,7 +22,7 @@ def allow_limit():
 def test_index_returns_html():
     resp = client.get("/")
     assert resp.status_code == 200
-    assert "SlovoStat" in resp.text
+    assert "Словостат" in resp.text
 
 
 def test_index_supports_head():
