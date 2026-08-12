@@ -4,6 +4,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
 [![тесты](https://github.com/kotophalk/slovostat/actions/workflows/tests.yml/badge.svg)](https://github.com/kotophalk/slovostat/actions/workflows/tests.yml)
+[![лицензия](https://img.shields.io/github/license/kotophalk/slovostat?color=green)](LICENSE)
 
 Подсчёт слов и символов на веб-странице по URL. Вводишь адрес — получаешь
 количество слов, символов с пробелами и без. Считается только видимый текст:
@@ -55,3 +56,7 @@ curl -X POST http://localhost:8000/analyze \
 ```bash
 pytest
 ```
+
+## Лицензия
+
+MIT — см. [LICENSE](LICENSE).
