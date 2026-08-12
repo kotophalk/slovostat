@@ -28,7 +28,8 @@ class AnalyzeRequest(BaseModel):
     url: str
 
 
-@app.get("/", response_class=HTMLResponse)
+# HEAD — для аптайм-мониторинга: многие проверяльщики ходят именно им.
+@app.api_route("/", response_class=HTMLResponse, methods=["GET", "HEAD"])
 async def index(request: Request):
     return templates.TemplateResponse(request, "index.html", {"metrics": metric_labels()})
 

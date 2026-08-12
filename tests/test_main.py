@@ -25,6 +25,12 @@ def test_index_returns_html():
     assert "SlovoStat" in resp.text
 
 
+def test_index_supports_head():
+    resp = client.head("/")
+    assert resp.status_code == 200
+    assert resp.text == ""
+
+
 def test_index_renders_all_metrics():
     from app.counter import METRICS
 
