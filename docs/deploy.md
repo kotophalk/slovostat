@@ -45,27 +45,43 @@ Reverse proxy один на все сервисы, каждый инструме
 Под root сразу после создания машины.
 
 ```bash
-# Пользователь вместо root
-adduser deploy && usermod -aG sudo deploy
-rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy
-
-# Вход только по ключу
-sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-systemctl reload ssh
+# Пользователь вместо root; пароль не нужен, вход только по ключу
+adduser --disabled-password --gecos "" deploy
+usermod -aG sudo deploy
+echo 'deploy ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/deploy && chmod 440 /etc/sudoers.d/deploy
+rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy/
 
 # Swap 2 ГБ — обязательный для 2 ГБ RAM
 fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
 echo '/swapfile none swap sw 0 0' >> /etc/fstab
 sysctl -w vm.swappiness=10 && echo 'vm.swappiness=10' >> /etc/sysctl.conf
 
-# Файрвол и автообновления безопасности
-ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw --force enable
-apt-get update && apt-get install -y unattended-upgrades && dpkg-reconfigure -plow unattended-upgrades
+# Файрвол
+ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp && ufw --force enable
+
+# Автообновления безопасности (без интерактивного диалога)
+apt-get install -y unattended-upgrades
+printf 'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n' \
+  > /etc/apt/apt.conf.d/20auto-upgrades
 ```
 
-Перед `PasswordAuthentication no` убедись, что ключ работает: открой второе
-SSH-соединение под `deploy` и не закрывай первое, пока не проверишь.
+Вход по ключу закрывается **отдельным шагом и только после проверки**. На
+облачных образах Ubuntu настройки SSH приходят из `/etc/ssh/sshd_config.d/`, и
+правка самого `sshd_config` ничего не даст: в sshd побеждает первое значение, а
+`50-cloud-init.conf` читается раньше. Поэтому нужен drop-in с меньшим номером:
+
+```bash
+printf 'PasswordAuthentication no\nPermitRootLogin no\nKbdInteractiveAuthentication no\n' \
+  > /etc/ssh/sshd_config.d/00-hardening.conf
+sshd -t && systemctl reload ssh
+sshd -T | grep -Ei 'passwordauthentication|permitrootlogin'   # должно быть no/no
+```
+
+Перед этим открой второе SSH-соединение под `deploy` и убедись, что оно
+работает. Первую сессию под root не закрывай, пока не проверишь.
+
+`ufw` не фильтрует порты, опубликованные Docker'ом, — но в нашем compose они
+публикуются только на `127.0.0.1`, так что снаружи их всё равно не видно.
 
 ## 2. Docker
 
