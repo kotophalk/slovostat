@@ -36,7 +36,8 @@ services:
 заголовок будет игнорироваться полностью.
 
 Оба конфига ниже уже передают `X-Forwarded-For`: Caddy добавляет его сам,
-у Nginx это `proxy_set_header X-Forwarded-For`.
+у Nginx это `proxy_set_header X-Forwarded-For`. Подробнее — в
+[настройках](configuration.md#ip-клиента-за-reverse-proxy).
 
 ---
 
@@ -132,10 +133,11 @@ echo "=== Готово ==="
 
 ## Порядок деплоя
 
-1. **Скопировать проект на VPS:**
+1. **Забрать проект на VPS:**
    ```bash
-   scp -r . user@your-vps:/opt/slovostat
+   git clone https://github.com/kotophalk/slovostat.git /opt/slovostat
    ```
+   Обновление потом — `git pull && docker compose up -d --build`.
 
 2. **На VPS — запустить скрипт (от root):**
    ```bash
