@@ -1,0 +1,44 @@
+# Боевой конфиг для slovostat.ru.
+#
+#   sudo cp /opt/slovostat/deploy/Caddyfile /etc/caddy/Caddyfile
+#   sudo caddy validate --config /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# Сертификаты Caddy получает и продлевает сам — но только после того, как
+# A-запись домена начнёт указывать на этот сервер.
+
+(common) {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+	log {
+		output file /var/log/caddy/{args[0]}.log {
+			roll_size 10MiB
+			roll_keep 3
+		}
+	}
+}
+
+slovostat.ru {
+	import common slovostat
+	reverse_proxy 127.0.0.1:8000
+}
+
+www.slovostat.ru {
+	redir https://slovostat.ru{uri} permanent
+}
+
+# Следующие инструменты — свой поддомен и свой порт:
+#
+# domains.slovostat.ru {
+# 	import common domains
+# 	reverse_proxy 127.0.0.1:8001
+# }
+#
+# dr.slovostat.ru {
+# 	import common dr
+# 	reverse_proxy 127.0.0.1:8002
+# }

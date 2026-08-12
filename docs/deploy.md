@@ -113,22 +113,20 @@ curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo 
 sudo apt-get update && sudo apt-get install -y caddy
 ```
 
-Конфиг — из [`deploy/Caddyfile.example`](../deploy/Caddyfile.example): скопировать
-в `/etc/caddy/Caddyfile`, заменить `example.com` на свой домен и указать почту
-для Let's Encrypt.
+Готовый конфиг для `slovostat.ru` лежит в [`deploy/Caddyfile`](../deploy/Caddyfile)
+(шаблон под другой домен — в [`deploy/Caddyfile.example`](../deploy/Caddyfile.example)):
 
 ```bash
-sudo cp /opt/slovostat/deploy/Caddyfile.example /etc/caddy/Caddyfile
-sudo nano /etc/caddy/Caddyfile
+sudo cp /opt/slovostat/deploy/Caddyfile /etc/caddy/Caddyfile
 sudo caddy validate --config /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
 
-DNS: A-запись `slovostat.example.com` → IP сервера. Если инструментов будет
-несколько, проще сразу завести wildcard `*.example.com` → тот же IP: новый
-сервис тогда добавляется одним блоком в Caddyfile без похода в DNS.
-Сертификат Caddy получит сам при первом обращении — но только после того, как
-DNS реально начнёт резолвиться.
+DNS: A-запись `slovostat.ru` → IP сервера, такая же для `www`. Если
+инструментов будет несколько, проще сразу завести wildcard `*.slovostat.ru` →
+тот же IP: новый сервис тогда добавляется одним блоком в Caddyfile без похода
+в DNS. Сертификат Caddy получит сам при первом обращении — но только после
+того, как DNS реально начнёт резолвиться.
 
 ## 5. Проверка, что лимит считает по клиентам
 
