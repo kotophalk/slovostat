@@ -176,8 +176,46 @@ sqlite3 /opt/slovostat/data/slovostat.db 'SELECT ip, COUNT(*) FROM requests GROU
 ## Обновление
 
 ```bash
-cd /opt/slovostat && git pull && docker compose up -d --build && docker image prune -f
+/opt/slovostat/deploy/update.sh
 ```
+
+Скрипт подтягивает `origin/master`, пересобирает контейнер, чистит старые
+образы и ждёт, пока `/health` ответит; если сервис не поднялся за 20 секунд —
+завершается с ошибкой и печатает последние строки лога.
+
+## Автодеплой при пуше в master
+
+GitHub Actions после зелёных тестов заходит на сервер по SSH и запускает тот же
+`update.sh`. Ключ деплоя ограничен forced command — ничего, кроме обновления,
+им сделать нельзя.
+
+**На сервере** (под `deploy`) — отдельный ключ и разрешение только на скрипт:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N "" -C "github-actions-slovostat"
+printf 'command="/opt/slovostat/deploy/update.sh",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding %s\n' \
+  "$(cat ~/.ssh/github_deploy.pub)" >> ~/.ssh/authorized_keys
+```
+
+**В репозитории** — три секрета (Settings → Secrets and variables → Actions):
+
+| Секрет | Чем заполнить |
+|---|---|
+| `DEPLOY_SSH_KEY` | приватный ключ целиком: `cat ~/.ssh/github_deploy` |
+| `DEPLOY_HOST` | домен или IP сервера |
+| `DEPLOY_KNOWN_HOSTS` | `awk '{print "slovostat.ru " $1 " " $2}' /etc/ssh/ssh_host_ed25519_key.pub` |
+
+`DEPLOY_KNOWN_HOSTS` берётся с самого сервера, а не через `ssh-keyscan` из
+интернета: так подмена ключа на пути ничего не даст.
+
+После записи секретов приватный ключ на сервере не нужен:
+
+```bash
+shred -u ~/.ssh/github_deploy
+```
+
+Проверить, не дожидаясь пуша, можно вручную — вкладка Actions → «деплой» →
+Run workflow.
 
 ## Резервные копии
 
