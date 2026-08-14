@@ -32,14 +32,14 @@ slovostat.example.com {
 	reverse_proxy 127.0.0.1:8000
 }
 
-# Следующие инструменты — тот же шаблон, свой порт:
+# Остальные инструменты сервера — отдельными файлами в /etc/caddy/conf.d/,
+# по одному на инструмент:
 #
-# domains.example.com {
-# 	import common domains
-# 	reverse_proxy 127.0.0.1:8001
-# }
+# 	domains.example.com {
+# 		import common domains
+# 		reverse_proxy 127.0.0.1:8001
+# 	}
 #
-# dr.example.com {
-# 	import common dr
-# 	reverse_proxy 127.0.0.1:8002
-# }
+# Так замена этого файла не сносит их конфигурацию. Импорт последним —
+# чтобы сниппет (common) был определён к моменту разбора этих файлов.
+import /etc/caddy/conf.d/*.caddy

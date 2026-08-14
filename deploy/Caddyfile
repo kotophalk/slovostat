@@ -1,5 +1,8 @@
-# Боевой конфиг для slovostat.ru.
+# Боевой конфиг для slovostat.ru. Файл общий на весь сервер, поэтому конфиги
+# соседних инструментов лежат отдельными файлами в /etc/caddy/conf.d/ и
+# подключаются импортом в конце — копирование этого файла их не затирает.
 #
+#   sudo mkdir -p /etc/caddy/conf.d
 #   sudo cp /opt/slovostat/deploy/Caddyfile /etc/caddy/Caddyfile
 #   # именно от caddy: под sudo валидация создаёт файлы логов от root,
 #   # и потом сервис не может их открыть (permission denied при reload)
@@ -33,14 +36,14 @@ www.slovostat.ru {
 	redir https://slovostat.ru{uri} permanent
 }
 
-# Следующие инструменты — свой поддомен и свой порт:
+# Конфиги остальных инструментов сервера. Каждый кладёт свой файл, например
+# /etc/caddy/conf.d/seo-report-ai.caddy:
 #
-# domains.slovostat.ru {
-# 	import common domains
-# 	reverse_proxy 127.0.0.1:8001
-# }
+# 	itogoskaz.ru {
+# 		import common itogoskaz
+# 		reverse_proxy 127.0.0.1:8001
+# 	}
 #
-# dr.slovostat.ru {
-# 	import common dr
-# 	reverse_proxy 127.0.0.1:8002
-# }
+# Импорт стоит последним, чтобы сниппет (common) был уже определён к моменту
+# разбора этих файлов.
+import /etc/caddy/conf.d/*.caddy

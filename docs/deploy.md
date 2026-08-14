@@ -134,6 +134,7 @@ sudo apt-get update && sudo apt-get install -y caddy
 (шаблон под другой домен — в [`deploy/Caddyfile.example`](../deploy/Caddyfile.example)):
 
 ```bash
+sudo mkdir -p /etc/caddy/conf.d
 sudo cp /opt/slovostat/deploy/Caddyfile /etc/caddy/Caddyfile
 # Валидацию запускаем от пользователя caddy: под sudo она не просто разбирает
 # конфиг, а поднимает модули и создаёт /var/log/caddy/*.log от root — после
@@ -141,6 +142,11 @@ sudo cp /opt/slovostat/deploy/Caddyfile /etc/caddy/Caddyfile
 sudo -u caddy caddy validate --config /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
+
+`/etc/caddy/Caddyfile` — файл общий на весь сервер, и копирование его из этого
+репозитория затирает всё, что там было. Поэтому конфиги остальных инструментов
+держим отдельными файлами в `/etc/caddy/conf.d/`: последняя строка нашего
+Caddyfile их подключает, и замена файла ничего чужого не сносит.
 
 `reload` не поднимает сервис, а просит работающий процесс перечитать конфиг:
 если он упал, ошибку покажет `systemctl status caddy` — старая конфигурация при
@@ -232,7 +238,11 @@ sqlite3 /opt/slovostat/data/slovostat.db ".backup '/opt/backups/slovostat-$(date
 
 1. `git clone` в `/opt/<имя>`, свой `.env` с портом 8001, 8002, …
 2. В compose нового сервиса — тот же `mem_limit` и публикация на `127.0.0.1`.
-3. Блок в `/etc/caddy/Caddyfile` по образцу, `systemctl reload caddy`.
+3. Свой файл `/etc/caddy/conf.d/<имя>.caddy` с блоком домена (сниппет `common`
+   из основного Caddyfile в нём доступен), затем `systemctl reload caddy`.
+
+Именно отдельный файл, а не блок в `/etc/caddy/Caddyfile`: основной файл
+приходит из этого репозитория и при обновлении перезаписывается целиком.
 
 ## Обслуживание
 
