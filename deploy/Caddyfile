@@ -39,9 +39,9 @@ www.slovostat.ru {
 # Конфиги остальных инструментов сервера. Каждый кладёт свой файл, например
 # /etc/caddy/conf.d/seo-report-ai.caddy:
 #
-# 	itogoskaz.ru {
-# 		import common itogoskaz
-# 		reverse_proxy 127.0.0.1:8001
+# 	<домен инструмента> {
+# 		import common <имя-для-лога>
+# 		reverse_proxy 127.0.0.1:<свой порт>
 # 	}
 #
 # Импорт стоит последним, чтобы сниппет (common) был уже определён к моменту
