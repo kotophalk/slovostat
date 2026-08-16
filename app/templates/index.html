@@ -20,6 +20,21 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; text-align: center; }
 .error { color: #d32f2f; padding: 12px; background: #fdecea; border-radius: 6px; display: none; }
 .error.show { display: block; }
+footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid #e5e5e5; color: #888; font-size: 13px; }
+footer p { text-align: center; margin-top: 16px; }
+footer a { color: #1a73e8; text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+/* Другие инструменты экосистемы */
+.other-tools-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.other-tools-title { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #777; }
+.other-tools-all { font-weight: 600; white-space: nowrap; }
+.other-tools-list { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.other-tools-list a { display: flex; flex-direction: column; gap: 3px; height: 100%; padding: 12px 14px; background: #f5f5f5; border: 1px solid #f5f5f5; border-radius: 6px; color: #666; transition: border-color 0.2s, background 0.2s; }
+.other-tools-list a:hover { text-decoration: none; background: #fff; border-color: #1a73e8; }
+.other-tools-list .tool-name { font-size: 15px; font-weight: 700; color: #222; }
+.other-tools-list a:hover .tool-name { color: #1a73e8; }
+.other-tools-list .tool-desc { font-size: 12px; line-height: 1.4; }
+@media (max-width: 560px) { .other-tools-list { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -37,6 +52,20 @@ button:disabled { opacity: 0.6; cursor: wait; }
     {% endfor %}
   </div>
 </div>
+<footer>
+  <nav class="other-tools" aria-label="Другие инструменты Делосвода">
+    <div class="other-tools-header">
+      <span class="other-tools-title">Другие инструменты</span>
+      <a class="other-tools-all" href="https://delosvod.ru/">Все инструменты →</a>
+    </div>
+    <ul class="other-tools-list">
+      <li><a href="https://domenomer.delosvod.ru/"><span class="tool-name">Доменомер</span><span class="tool-desc">Массовая проверка Ahrefs Domain Rating (DR) списком доменов, с экспортом в CSV</span></a></li>
+      <li><a href="https://svobodomen.delosvod.ru/"><span class="tool-name">Свободомен</span><span class="tool-desc">Массовая проверка свободных доменов: .ru, .рф, .com и ещё 1200+ зон</span></a></li>
+      <li><a href="https://slovoprav.ru/"><span class="tool-name">Словоправ</span><span class="tool-desc">ТЗ для копирайтера по реальному ТОПу Яндекса за 2–4 минуты</span></a></li>
+    </ul>
+  </nav>
+  <p>Бесплатный инструмент экосистемы <a href="https://delosvod.ru/">Делосвод</a> — лаборатории автоматизации SEO.</p>
+</footer>
 <script>
 document.getElementById('form').addEventListener('submit', async (e) => {
   e.preventDefault();
