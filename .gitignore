@@ -5,3 +5,7 @@ __pycache__/
 *.db
 data/
 .env
+
+# WAL-файлы локальной SQLite
+*.db-shm
+*.db-wal
