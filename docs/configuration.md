@@ -11,6 +11,7 @@
 | `SLOVOSTAT_MAX_PAGE_MB` | 5 | Максимальный размер страницы (МБ) |
 | `SLOVOSTAT_TRUSTED_PROXIES` | localhost + приватные сети | Адреса, от которых принимается `X-Forwarded-For` |
 | `SLOVOSTAT_ALLOW_PRIVATE_TARGETS` | 0 | Разрешить анализ приватных адресов |
+| `SLOVOSTAT_METRIKA_ID` | пусто | Номер счётчика Яндекс.Метрики; пусто — сниппет в HTML не выводится |
 
 ## Какие ссылки принимаются
 

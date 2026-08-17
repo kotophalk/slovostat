@@ -12,6 +12,7 @@ services:
       SLOVOSTAT_DB_PATH: /app/data/slovostat.db
       SLOVOSTAT_RATE_LIMIT: ${SLOVOSTAT_RATE_LIMIT:-25}
       SLOVOSTAT_MAX_PAGE_MB: ${SLOVOSTAT_MAX_PAGE_MB:-5}
+      SLOVOSTAT_METRIKA_ID: ${SLOVOSTAT_METRIKA_ID:-}
     # Разбор страницы на лимите (5 МБ) добавляет ~80 МБ к 50 МБ базы.
     # Лимит держит один инструмент в своих рамках, чтобы он не уронил соседей.
     mem_limit: 320m

@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from app.clientip import get_client_ip
-from app.config import RATE_LIMIT_PER_DAY
+from app.config import METRIKA_ID, RATE_LIMIT_PER_DAY
 from app.counter import count_text, metric_labels
 from app.fetcher import fetch_visible_text, FetchError
 from app.limiter import check_limit, close_db, init_db, ping_db, record_request
@@ -31,7 +31,9 @@ class AnalyzeRequest(BaseModel):
 # HEAD — для аптайм-мониторинга: многие проверяльщики ходят именно им.
 @app.api_route("/", response_class=HTMLResponse, methods=["GET", "HEAD"])
 async def index(request: Request):
-    return templates.TemplateResponse(request, "index.html", {"metrics": metric_labels()})
+    return templates.TemplateResponse(
+        request, "index.html", {"metrics": metric_labels(), "metrika_id": METRIKA_ID}
+    )
 
 
 # Для мониторинга: без шаблона и без сети, но с проверкой базы — если она

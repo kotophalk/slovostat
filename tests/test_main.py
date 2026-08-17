@@ -31,6 +31,35 @@ def test_index_supports_head():
     assert resp.text == ""
 
 
+def test_index_without_metrika_id_has_no_counter():
+    """По умолчанию (стенд, тесты, чужие копии) хиты в Метрику не шлются."""
+    with patch("app.main.METRIKA_ID", ""):
+        resp = client.get("/")
+    assert "mc.yandex.ru" not in resp.text
+    assert "ym(" not in resp.text
+
+
+def test_index_with_metrika_id_renders_counter():
+    with patch("app.main.METRIKA_ID", "12345678"):
+        resp = client.get("/")
+    assert "https://mc.yandex.ru/metrika/tag.js?id=12345678" in resp.text
+    assert 'ym(12345678,"init"' in resp.text
+    assert "https://mc.yandex.ru/watch/12345678" in resp.text
+    assert "webvisor:false" in resp.text
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("12345678", "12345678"),
+    (" 12345678\n", "12345678"),
+    ("", ""),
+    ("abc", ""),
+    ("123;alert(1)", ""),
+])
+def test_config_counter_id_accepts_digits_only(raw, expected):
+    from app.config import _counter_id
+    assert _counter_id(raw) == expected
+
+
 def test_health_ok():
     with patch("app.main.ping_db", new_callable=AsyncMock):
         resp = client.get("/health")

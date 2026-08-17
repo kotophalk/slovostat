@@ -29,3 +29,14 @@ TRUSTED_PROXIES = _split(
 # Разрешить запросы к приватным адресам. Только для локальной разработки:
 # на публичном сервере это открывает SSRF во внутреннюю сеть.
 ALLOW_PRIVATE_TARGETS = _flag(os.environ.get("SLOVOSTAT_ALLOW_PRIVATE_TARGETS", "0"))
+
+
+def _counter_id(value: str) -> str:
+    """Номер счётчика Метрики — только цифры; всё остальное считаем «не задан»."""
+    value = value.strip()
+    return value if value.isdigit() else ""
+
+
+# Номер счётчика Яндекс.Метрики. Пусто — сниппет в HTML не выводится
+# (локальный стенд, тесты и чужие копии не шлют хиты в чужой счётчик).
+METRIKA_ID = _counter_id(os.environ.get("SLOVOSTAT_METRIKA_ID", ""))
