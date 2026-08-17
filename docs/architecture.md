@@ -36,7 +36,8 @@ app/
 ├── counter.py    реестр метрик и подсчёт
 ├── config.py     все настройки из переменных окружения
 └── templates/
-    └── index.html
+    ├── index.html    главная; счётчик Метрики и cookie-уведомление — только при SLOVOSTAT_METRIKA_ID
+    └── privacy.html  политика конфиденциальности (/privacy)
 ```
 
 Каждый модуль знает только о `config` и о себе; связывает их `main.py`.

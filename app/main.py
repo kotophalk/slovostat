@@ -36,6 +36,11 @@ async def index(request: Request):
     )
 
 
+@app.api_route("/privacy", response_class=HTMLResponse, methods=["GET", "HEAD"])
+async def privacy(request: Request):
+    return templates.TemplateResponse(request, "privacy.html")
+
+
 # Для мониторинга: без шаблона и без сети, но с проверкой базы — если она
 # недоступна, /analyze тоже работать не будет.
 @app.api_route("/health", methods=["GET", "HEAD"])

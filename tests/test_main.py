@@ -32,20 +32,33 @@ def test_index_supports_head():
 
 
 def test_index_without_metrika_id_has_no_counter():
-    """По умолчанию (стенд, тесты, чужие копии) хиты в Метрику не шлются."""
+    """По умолчанию (стенд, тесты, чужие копии) хиты в Метрику не шлются — и cookie-уведомление не нужно."""
     with patch("app.main.METRIKA_ID", ""):
         resp = client.get("/")
     assert "mc.yandex.ru" not in resp.text
     assert "ym(" not in resp.text
+    assert 'id="cookie-notice"' not in resp.text
+    assert 'href="/privacy"' in resp.text  # ссылка в футере — всегда
 
 
-def test_index_with_metrika_id_renders_counter():
+def test_index_with_metrika_id_renders_counter_and_cookie_notice():
     with patch("app.main.METRIKA_ID", "12345678"):
         resp = client.get("/")
     assert "https://mc.yandex.ru/metrika/tag.js?id=12345678" in resp.text
     assert 'ym(12345678,"init"' in resp.text
     assert "https://mc.yandex.ru/watch/12345678" in resp.text
     assert "webvisor:false" in resp.text
+    assert 'id="cookie-notice"' in resp.text
+    assert "nc_accepted=1" in resp.text
+
+
+def test_privacy_page():
+    resp = client.get("/privacy")
+    assert resp.status_code == 200
+    assert "Политика конфиденциальности" in resp.text
+    assert "502917677947" in resp.text
+    assert "info@delosvod.ru" in resp.text
+    assert client.head("/privacy").status_code == 200
 
 
 @pytest.mark.parametrize("raw,expected", [
