@@ -159,3 +159,10 @@ async def test_client_ip_used_for_rate_limit(peer, forwarded, expected):
             async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as proxied:
                 await proxied.post("/analyze", json={"url": "http://example.com"}, headers=headers)
     check.assert_awaited_once_with(expected)
+
+
+def test_favicon_is_served():
+    resp = client.get("/static/favicon.svg")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("image/svg+xml")
+    assert '<link rel="icon" href="/static/favicon.svg"' in client.get("/").text

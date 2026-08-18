@@ -4,10 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Словостат — подсчёт слов на странице</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/static/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; color: #222; }
-h1 { margin-bottom: 8px; }
+h1 { margin-bottom: 8px; display: flex; align-items: center; gap: 0.4em; }
+h1 .mark { width: 1em; height: 1em; flex: none; }
 p.desc { color: #555; margin-bottom: 24px; }
 form { display: flex; gap: 8px; margin-bottom: 24px; }
 input { flex: 1; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
@@ -46,7 +50,7 @@ footer a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
-<h1>Словостат</h1>
+<h1><svg class="mark" viewBox="0 0 24 24" fill="none" stroke-width="4" stroke-linecap="round" aria-hidden="true"><path d="M4 4h16" stroke="#64748B"/><path d="M4 12h12" stroke="#64748B"/><path d="M4 20h2M11 20h2" stroke="#64748B"/><path d="M18 20h2" stroke="#1A73E8"/></svg>Словостат</h1>
 <p class="desc">Подсчёт слов и символов на веб-странице</p>
 <form id="form">
   <input type="url" id="url" placeholder="https://example.com" required>
