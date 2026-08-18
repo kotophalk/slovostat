@@ -166,3 +166,9 @@ def test_favicon_is_served():
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("image/svg+xml")
     assert '<link rel="icon" href="/static/favicon.svg"' in client.get("/").text
+
+
+def test_root_favicon_ico_redirects_to_static():
+    resp = client.get("/favicon.ico", follow_redirects=False)
+    assert resp.status_code == 301
+    assert resp.headers["location"] == "/static/favicon.ico"
