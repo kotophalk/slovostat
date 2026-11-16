@@ -9,7 +9,7 @@ source .venv/bin/activate           # venv уже создан в .venv
 pip install -r requirements.txt
 uvicorn app.main:app --reload       # http://localhost:8000
 
-pytest                              # весь набор (48 тестов, ~0.5 с)
+pytest                              # весь набор (65 тестов, ~0.6 с)
 pytest tests/test_fetcher.py::test_rejects_internal_addresses   # один тест
 pytest -k redirect                  # по подстроке
 

@@ -1,4 +1,5 @@
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -11,13 +12,17 @@ from app.clientip import get_client_ip
 from app.config import METRIKA_ID, RATE_LIMIT_PER_DAY
 from app.counter import count_text, metric_labels
 from app.fetcher import fetch_visible_text, FetchError
-from app.limiter import check_limit, close_db, init_db, ping_db, record_request
+from app.limiter import check_limit, close_db, init_db, ping_db, purge_loop, record_request
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    purger = asyncio.create_task(purge_loop())
     yield
+    purger.cancel()
+    with suppress(asyncio.CancelledError):
+        await purger
     await close_db()
 
 

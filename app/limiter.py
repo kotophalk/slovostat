@@ -1,18 +1,22 @@
 import asyncio
+import logging
 import time
 
 import aiosqlite
 
 from app.config import RATE_LIMIT_PER_DAY, DATABASE_PATH
 
+logger = logging.getLogger(__name__)
+
 _DAY_SECONDS = 86400
-# Чистим протухшие записи не на каждой вставке: таблица маленькая,
-# а лишний DELETE на каждый запрос — лишняя запись на диск.
-_CLEANUP_EVERY = 100
+# Политика конфиденциальности обещает удалять IP «по истечении суток».
+# Раньше записи чистились раз в 100 вставок, и при малом трафике жили
+# дольше суток — поэтому чистка идёт по времени, фоновым циклом из
+# lifespan, независимо от того, приходят ли запросы (16.11.2026).
+_PURGE_INTERVAL = 600
 
 _db: aiosqlite.Connection | None = None
 _db_lock = asyncio.Lock()
-_writes_since_cleanup = 0
 
 
 async def init_db(db_path: str | None = None) -> aiosqlite.Connection:
@@ -65,15 +69,30 @@ async def check_limit(ip: str) -> bool:
 
 async def record_request(ip: str) -> None:
     """Записывает запрос."""
-    global _writes_since_cleanup
     db = await _connection()
-    now = time.time()
-    await db.execute("INSERT INTO requests (ip, timestamp) VALUES (?, ?)", (ip, now))
-
-    _writes_since_cleanup += 1
-    if _writes_since_cleanup >= _CLEANUP_EVERY:
-        _writes_since_cleanup = 0
-        await db.execute(
-            "DELETE FROM requests WHERE timestamp < ?", (now - _DAY_SECONDS,)
-        )
+    await db.execute(
+        "INSERT INTO requests (ip, timestamp) VALUES (?, ?)", (ip, time.time())
+    )
     await db.commit()
+
+
+async def purge_expired(now: float | None = None) -> int:
+    """Удаляет записи старше суток. Возвращает число удалённых строк."""
+    db = await _connection()
+    cutoff = (time.time() if now is None else now) - _DAY_SECONDS
+    cursor = await db.execute("DELETE FROM requests WHERE timestamp < ?", (cutoff,))
+    await db.commit()
+    return cursor.rowcount
+
+
+async def purge_loop(interval: float = _PURGE_INTERVAL) -> None:
+    """Чистит протухшие записи сразу при старте и затем раз в interval секунд.
+
+    Ошибка базы не останавливает цикл: следующая попытка — через interval.
+    """
+    while True:
+        try:
+            await purge_expired()
+        except Exception:
+            logger.exception("Не удалось удалить устаревшие записи лимитера")
+        await asyncio.sleep(interval)
