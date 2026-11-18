@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -48,6 +48,16 @@ async def index(request: Request):
 @app.api_route("/privacy", response_class=HTMLResponse, methods=["GET", "HEAD"])
 async def privacy(request: Request):
     return templates.TemplateResponse(request, "privacy.html")
+
+
+# Роботы первым делом спрашивают /robots.txt. Индексировать можно всё, кроме
+# /analyze: это POST-эндпоинт, обходить его нечего (как /api/ у Доменомера).
+ROBOTS_TXT = "User-agent: *\nAllow: /\nDisallow: /analyze\n"
+
+
+@app.api_route("/robots.txt", methods=["GET", "HEAD"], include_in_schema=False)
+async def robots_txt():
+    return PlainTextResponse(ROBOTS_TXT)
 
 
 # Старые клиенты и роботы ходят за /favicon.ico в корень, минуя <link rel="icon">.

@@ -172,3 +172,27 @@ def test_root_favicon_ico_redirects_to_static():
     resp = client.get("/favicon.ico", follow_redirects=False)
     assert resp.status_code == 301
     assert resp.headers["location"] == "/static/favicon.ico"
+
+
+def test_robots_txt_allows_pages_and_hides_the_endpoint():
+    resp = client.get("/robots.txt")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/plain")
+    assert resp.text == "User-agent: *\nAllow: /\nDisallow: /analyze\n"
+    assert client.head("/robots.txt").status_code == 200
+
+
+def test_index_has_description_canonical_and_og():
+    html = client.get("/").text
+    assert '<meta name="description" content="' in html
+    assert '<link rel="canonical" href="https://slovostat.ru/">' in html
+    for prop in ("og:type", "og:site_name", "og:title", "og:description", "og:url", "og:locale"):
+        assert f'<meta property="{prop}"' in html, prop
+
+
+def test_cta_names_both_search_engines():
+    # Э6 антикризисного плана: Словоправ работает и с Google — призыв не должен говорить «только Яндекс».
+    html = client.get("/").text
+    # Только сам призыв: в футере экосистемы та же фраза есть в подзаголовке Словоправа.
+    cta = html.split('<p class="cta">', 1)[1].split("</p>", 1)[0]
+    assert "ТОПу Яндекса или Google" in cta
